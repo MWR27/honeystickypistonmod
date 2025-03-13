@@ -2,9 +2,7 @@ package mwr_.honeystickypistonmod.block;
 
 import java.util.Collections;
 import java.util.List;
-
 import javax.annotation.Nullable;
-
 import mwr_.honeystickypistonmod.tileentity.HoneyStickyPistonMovingBlockEntity;
 import mwr_.honeystickypistonmod.tileentity.ModBlockEntityType;
 import net.minecraft.core.BlockPos;
@@ -41,90 +39,109 @@ public class MovingHoneyStickyPistonBlock extends BaseEntityBlock {
    public static final DirectionProperty FACING = HoneyStickyPistonHeadBlock.FACING;
    public static final EnumProperty<PistonType> TYPE = HoneyStickyPistonHeadBlock.TYPE;
 
-   public MovingHoneyStickyPistonBlock(BlockBehaviour.Properties p_60050_) {
-      super(p_60050_);
+   public MovingHoneyStickyPistonBlock(BlockBehaviour.Properties properties) {
+      super(properties);
       this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(TYPE, PistonType.DEFAULT));
    }
 
    @Nullable
-   public BlockEntity newBlockEntity(BlockPos p_155879_, BlockState p_155880_) {
-      return null;
+   @Override
+   public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+      return new HoneyStickyPistonMovingBlockEntity(pos, state);
    }
 
-   public static BlockEntity newMovingBlockEntity(BlockPos p_155882_, BlockState p_155883_, BlockState p_155884_, Direction p_155885_, boolean p_155886_, boolean p_155887_) {
-      return new HoneyStickyPistonMovingBlockEntity(p_155882_, p_155883_, p_155884_, p_155885_, p_155886_, p_155887_);
+   public static BlockEntity newMovingBlockEntity(BlockPos pos, BlockState state, BlockState movedState, Direction direction, boolean extending, boolean isSourcePiston) {
+      return new HoneyStickyPistonMovingBlockEntity(pos, state, movedState, direction, extending, isSourcePiston);
    }
 
    @Nullable
-   public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level p_155875_, BlockState p_155876_, BlockEntityType<T> p_155877_) {
-      return createTickerHelper(p_155877_, (BlockEntityType)ModBlockEntityType.HONEY_STICKY_PISTON.get(), HoneyStickyPistonMovingBlockEntity::tick);
+   @Override
+   public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> entityType) {
+      return createTickerHelper(entityType, ModBlockEntityType.HONEY_STICKY_PISTON.get(), HoneyStickyPistonMovingBlockEntity::tick);
    }
 
-   public void onRemove(BlockState p_60077_, Level p_60078_, BlockPos p_60079_, BlockState p_60080_, boolean p_60081_) {
-      if (!p_60077_.is(p_60080_.getBlock())) {
-         BlockEntity blockentity = p_60078_.getBlockEntity(p_60079_);
-         if (blockentity instanceof HoneyStickyPistonMovingBlockEntity) {
-            ((HoneyStickyPistonMovingBlockEntity)blockentity).finalTick();
+   @Override
+   public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean moving) {
+      if (!oldState.is(newState.getBlock())) {
+         BlockEntity blockEntity = level.getBlockEntity(pos);
+         if (blockEntity instanceof HoneyStickyPistonMovingBlockEntity) {
+            ((HoneyStickyPistonMovingBlockEntity) blockEntity).finalTick();
          }
-
+         super.onRemove(oldState, level, pos, newState, moving);
       }
    }
 
-   public void destroy(LevelAccessor p_60061_, BlockPos p_60062_, BlockState p_60063_) {
-      BlockPos blockpos = p_60062_.relative(p_60063_.getValue(FACING).getOpposite());
-      BlockState blockstate = p_60061_.getBlockState(blockpos);
-      if (blockstate.getBlock() instanceof HoneyStickyPistonBaseBlock && blockstate.getValue(HoneyStickyPistonBaseBlock.EXTENDED)) {
-         p_60061_.removeBlock(blockpos, false);
-      }
-
-   }
-
-   public InteractionResult use(BlockState p_60070_, Level p_60071_, BlockPos p_60072_, Player p_60073_, InteractionHand p_60074_, BlockHitResult p_60075_) {
-      if (!p_60071_.isClientSide && p_60071_.getBlockEntity(p_60072_) == null) {
-         p_60071_.removeBlock(p_60072_, false);
-         return InteractionResult.CONSUME;
-      } else {
-         return InteractionResult.PASS;
+   @Override
+   public void destroy(LevelAccessor level, BlockPos pos, BlockState state) {
+      BlockPos pistonBasePos = pos.relative(state.getValue(FACING).getOpposite());
+      BlockState pistonBaseState = level.getBlockState(pistonBasePos);
+      if (pistonBaseState.getBlock() instanceof HoneyStickyPistonBaseBlock && pistonBaseState.getValue(HoneyStickyPistonBaseBlock.EXTENDED)) {
+         level.removeBlock(pistonBasePos, false);
       }
    }
 
-   public List<ItemStack> getDrops(BlockState p_60089_, LootContext.Builder p_60090_) {
-      HoneyStickyPistonMovingBlockEntity pistonmovingblockentity = this.getBlockEntity(p_60090_.getLevel(), new BlockPos(p_60090_.getParameter(LootContextParams.ORIGIN)));
-      return pistonmovingblockentity == null ? Collections.emptyList() : pistonmovingblockentity.getMovedState().getDrops(p_60090_);
+   @Override
+   public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+      if (!level.isClientSide) {
+         BlockEntity blockEntity = level.getBlockEntity(pos);
+         if (blockEntity instanceof HoneyStickyPistonMovingBlockEntity) {
+            return InteractionResult.PASS;
+         } else {
+            level.removeBlock(pos, false);
+            return InteractionResult.CONSUME;
+         }
+      }
+      return InteractionResult.PASS;
    }
 
-   public VoxelShape getShape(BlockState p_60099_, BlockGetter p_60100_, BlockPos p_60101_, CollisionContext p_60102_) {
+   @Override
+   public List<ItemStack> getDrops(BlockState state, LootContext.Builder builder) {
+      BlockEntity blockEntity = builder.getLevel().getBlockEntity(new BlockPos(builder.getParameter(LootContextParams.ORIGIN)));
+      if (blockEntity instanceof HoneyStickyPistonMovingBlockEntity pistonEntity) {
+         return pistonEntity.getMovedState().getDrops(builder);
+      }
+      return Collections.emptyList();
+   }
+
+   @Override
+   public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
       return Shapes.empty();
    }
 
-   public VoxelShape getCollisionShape(BlockState p_60104_, BlockGetter p_60105_, BlockPos p_60106_, CollisionContext p_60107_) {
-      HoneyStickyPistonMovingBlockEntity pistonmovingblockentity = this.getBlockEntity(p_60105_, p_60106_);
-      return pistonmovingblockentity != null ? pistonmovingblockentity.getCollisionShape(p_60105_, p_60106_) : Shapes.empty();
+   @Override
+   public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+      HoneyStickyPistonMovingBlockEntity pistonEntity = getBlockEntity(level, pos);
+      return pistonEntity != null ? pistonEntity.getCollisionShape(level, pos) : Shapes.empty();
    }
 
    @Nullable
-   private HoneyStickyPistonMovingBlockEntity getBlockEntity(BlockGetter p_60054_, BlockPos p_60055_) {
-      BlockEntity blockentity = p_60054_.getBlockEntity(p_60055_);
-      return blockentity instanceof HoneyStickyPistonMovingBlockEntity ? (HoneyStickyPistonMovingBlockEntity)blockentity : null;
+   private HoneyStickyPistonMovingBlockEntity getBlockEntity(BlockGetter level, BlockPos pos) {
+      BlockEntity blockEntity = level.getBlockEntity(pos);
+      return blockEntity instanceof HoneyStickyPistonMovingBlockEntity ? (HoneyStickyPistonMovingBlockEntity) blockEntity : null;
    }
 
-   public ItemStack getCloneItemStack(BlockGetter p_60057_, BlockPos p_60058_, BlockState p_60059_) {
+   @Override
+   public ItemStack getCloneItemStack(BlockGetter level, BlockPos pos, BlockState state) {
       return ItemStack.EMPTY;
    }
 
-   public BlockState rotate(BlockState p_60086_, Rotation p_60087_) {
-      return p_60086_.setValue(FACING, p_60087_.rotate(p_60086_.getValue(FACING)));
+   @Override
+   public BlockState rotate(BlockState state, Rotation rotation) {
+      return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
    }
 
-   public BlockState mirror(BlockState p_60083_, Mirror p_60084_) {
-      return p_60083_.rotate(p_60084_.getRotation(p_60083_.getValue(FACING)));
+   @Override
+   public BlockState mirror(BlockState state, Mirror mirror) {
+      return state.rotate(mirror.getRotation(state.getValue(FACING)));
    }
 
-   protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> p_60097_) {
-      p_60097_.add(FACING, TYPE);
+   @Override
+   protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+      builder.add(FACING, TYPE);
    }
 
-   public boolean isPathfindable(BlockState p_60065_, BlockGetter p_60066_, BlockPos p_60067_, PathComputationType p_60068_) {
+   @Override
+   public boolean isPathfindable(BlockState state, BlockGetter level, BlockPos pos, PathComputationType type) {
       return false;
    }
 }

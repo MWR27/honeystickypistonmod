@@ -1,12 +1,8 @@
 package mwr_.honeystickypistonmod.block;
 
 import mwr_.honeystickypistonmod.HoneyStickyPistonMod;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.Material;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -15,17 +11,27 @@ public class ModBlocks {
    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, HoneyStickyPistonMod.MOD_ID);
 
    public static final RegistryObject<Block> HONEY_STICKY_PISTON = BLOCKS.register("honey_sticky_piston", () -> honeyStickyPistonBase(true));
-   public static final RegistryObject<Block> HONEY_STICKY_PISTON_HEAD = BLOCKS.register("honey_sticky_piston_head", () -> new HoneyStickyPistonHeadBlock(BlockBehaviour.Properties.of(Material.PISTON).strength(1.5F).noLootTable()));
-   public static final RegistryObject<Block> MOVING_HONEY_STICKY_PISTON = BLOCKS.register("moving_honey_sticky_piston", () -> new MovingHoneyStickyPistonBlock(BlockBehaviour.Properties.of(Material.PISTON).strength(-1.0F).dynamicShape().noLootTable().noOcclusion().isRedstoneConductor(ModBlocks::never).isSuffocating(ModBlocks::never).isViewBlocking(ModBlocks::never)));
+   public static final RegistryObject<Block> HONEY_STICKY_PISTON_HEAD = BLOCKS.register("honey_sticky_piston_head",
+           () -> new HoneyStickyPistonHeadBlock(BlockBehaviour.Properties.of().strength(1.5F).noLootTable())
+   );
+   public static final RegistryObject<Block> MOVING_HONEY_STICKY_PISTON = BLOCKS.register("moving_honey_sticky_piston",
+           () -> new MovingHoneyStickyPistonBlock(BlockBehaviour.Properties.of()
+                   .strength(-1.0F)
+                   .dynamicShape()
+                   .noOcclusion()
+                   .isRedstoneConductor((state, level, pos) -> false)
+                   .isSuffocating((state, level, pos) -> false)
+                   .isViewBlocking((state, level, pos) -> false)
+           )
+   );
 
-   private static boolean never(BlockState p_50806_, BlockGetter p_50807_, BlockPos p_50808_) {
-      return false;
-   }
-
-   private static HoneyStickyPistonBaseBlock honeyStickyPistonBase(boolean p_50799_) {
-      BlockBehaviour.StatePredicate blockbehaviour$statepredicate = (p_152641_, p_152642_, p_152643_) -> {
-         return !p_152641_.getValue(HoneyStickyPistonBaseBlock.EXTENDED);
-      };
-      return new HoneyStickyPistonBaseBlock(p_50799_, BlockBehaviour.Properties.of(Material.PISTON).strength(1.5F).isRedstoneConductor(ModBlocks::never).isSuffocating(blockbehaviour$statepredicate).isViewBlocking(blockbehaviour$statepredicate));
+   private static HoneyStickyPistonBaseBlock honeyStickyPistonBase(boolean isSticky) {
+      BlockBehaviour.StatePredicate statePredicate = (state, level, pos) -> !state.getValue(HoneyStickyPistonBaseBlock.EXTENDED);
+      return new HoneyStickyPistonBaseBlock(isSticky, BlockBehaviour.Properties.of()
+              .strength(1.5F)
+              .isRedstoneConductor((state, level, pos) -> false)
+              .isSuffocating(statePredicate)
+              .isViewBlocking(statePredicate)
+      );
    }
 }

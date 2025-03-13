@@ -1,16 +1,24 @@
-package mwr_.honeystickypistonmod.item;
+package mwr_.honeystickypistonmod;
 
-import mwr_.honeystickypistonmod.HoneyStickyPistonMod;
 import mwr_.honeystickypistonmod.block.ModBlocks;
-import net.minecraft.world.item.BlockItem;
+import mwr_.honeystickypistonmod.item.ModItems;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.event.CreativeModeTabEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
-public class ModItems {
-   public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, HoneyStickyPistonMod.MOD_ID);
-
-   public static final RegistryObject<Item> HONEY_STICKY_PISTON = ITEMS.register("honey_sticky_piston", () -> new BlockItem(ModBlocks.HONEY_STICKY_PISTON.get(), (new Item.Properties()).tab(CreativeModeTab.TAB_REDSTONE)));
+@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
+public class ModCreativeTabs {
+    @SubscribeEvent
+    public static void onCreativeTabBuild(CreativeModeTabEvent.BuildContents event) {
+        if (event.getTab() == CreativeModeTabs.REDSTONE_BLOCKS) {
+            event.getEntries().putAfter(
+                new ItemStack(net.minecraft.world.level.block.Blocks.STICKY_PISTON), // Insert after sticky piston
+                new ItemStack(ModItems.HONEY_STICKY_PISTON.get()),
+                CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
+            );
+        }
+    }
 }
