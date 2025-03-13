@@ -25,6 +25,7 @@ public class HoneyStickyPistonMod {
 		
 		ModBlocks.BLOCKS.register(bus);
 		ModItems.ITEMS.register(bus);
+		ModCreativeTabs.CREATIVE_MODE_TABS.register(bus);
 		ModBlockEntityType.BLOCK_ENTITY_TYPES.register(bus);
 
 		MinecraftForge.EVENT_BUS.register(this);
