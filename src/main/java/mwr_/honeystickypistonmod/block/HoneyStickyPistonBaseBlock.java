@@ -27,6 +27,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.PistonType;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.PushReaction;
+import net.minecraftforge.event.ForgeEventFactory;
 
 public class HoneyStickyPistonBaseBlock extends PistonBaseBlock {
    private final boolean isSticky;
@@ -108,72 +109,41 @@ public class HoneyStickyPistonBaseBlock extends PistonBaseBlock {
       }
    }
 
-   public boolean triggerEvent(BlockState p_60192_, Level p_60193_, BlockPos p_60194_, int p_60195_, int p_60196_) {
-      Direction direction = p_60192_.getValue(FACING);
-      if (!p_60193_.isClientSide) {
-         boolean flag = this.getNeighborSignal(p_60193_, p_60194_, direction);
-         if (flag && (p_60195_ == 1 || p_60195_ == 2)) {
-            p_60193_.setBlock(p_60194_, p_60192_.setValue(EXTENDED, Boolean.valueOf(true)), 2);
+   @Override
+   public boolean triggerEvent(BlockState state, Level level, BlockPos pos, int eventID, int eventParam) {
+      Direction direction = state.getValue(FACING);
+
+      if (!level.isClientSide) {
+         boolean hasPower = getNeighborSignal(level, pos, direction);
+         if (hasPower && (eventID == 1 || eventID == 2)) {
+            level.setBlock(pos, state.setValue(EXTENDED, true), 2);
             return false;
          }
-
-         if (!flag && p_60195_ == 0) {
+         if (!hasPower && eventID == 0) {
             return false;
          }
       }
 
-      if (p_60195_ == 0) {
-         if (net.minecraftforge.event.ForgeEventFactory.onPistonMovePre(p_60193_, p_60194_, direction, true)) return false;
-         if (!this.moveBlocks(p_60193_, p_60194_, direction, true)) {
+      if (eventID == 0) {
+         if (ForgeEventFactory.onPistonMovePre(level, pos, direction, true)) return false;
+         if (!moveBlocks(level, pos, direction, true)) {
             return false;
          }
+         level.setBlock(pos, state.setValue(EXTENDED, true), 67);
+         level.playSound(null, pos, SoundEvents.PISTON_EXTEND, SoundSource.BLOCKS, 0.5F, level.random.nextFloat() * 0.25F + 0.6F);
 
-         p_60193_.setBlock(p_60194_, p_60192_.setValue(EXTENDED, Boolean.valueOf(true)), 67);
-         p_60193_.playSound((Player)null, p_60194_, SoundEvents.PISTON_EXTEND, SoundSource.BLOCKS, 0.5F, p_60193_.random.nextFloat() * 0.25F + 0.6F);
-         p_60193_.gameEvent((Entity)null, GameEvent.PISTON_EXTEND, p_60194_);
-      } else if (p_60195_ == 1 || p_60195_ == 2) {
-         if (net.minecraftforge.event.ForgeEventFactory.onPistonMovePre(p_60193_, p_60194_, direction, false)) return false;
-         BlockEntity blockentity1 = p_60193_.getBlockEntity(p_60194_.relative(direction));
-         if (blockentity1 instanceof HoneyStickyPistonMovingBlockEntity) {
-            ((HoneyStickyPistonMovingBlockEntity)blockentity1).finalTick();
-         }
+         // Emit a generic BLOCK_CHANGE event instead of PISTON_EXTEND
+         level.gameEvent(GameEvent.BLOCK_CHANGE, pos, GameEvent.Context.of(state));
+      } else if (eventID == 1 || eventID == 2) {
+         if (ForgeEventFactory.onPistonMovePre(level, pos, direction, false)) return false;
+         level.setBlock(pos, Blocks.AIR.defaultBlockState(), 20);
+         level.playSound(null, pos, SoundEvents.PISTON_CONTRACT, SoundSource.BLOCKS, 0.5F, level.random.nextFloat() * 0.15F + 0.6F);
 
-         BlockState blockstate = ModBlocks.MOVING_HONEY_STICKY_PISTON.get().defaultBlockState().setValue(MovingHoneyStickyPistonBlock.FACING, direction).setValue(MovingHoneyStickyPistonBlock.TYPE, this.isSticky ? PistonType.STICKY : PistonType.DEFAULT);
-         p_60193_.setBlock(p_60194_, blockstate, 20);
-         p_60193_.setBlockEntity(MovingHoneyStickyPistonBlock.newMovingBlockEntity(p_60194_, blockstate, this.defaultBlockState().setValue(FACING, Direction.from3DDataValue(p_60196_ & 7)), direction, false, true));
-         p_60193_.blockUpdated(p_60194_, blockstate.getBlock());
-         blockstate.updateNeighbourShapes(p_60193_, p_60194_, 2);
-         if (this.isSticky) {
-            BlockPos blockpos = p_60194_.offset(direction.getStepX() * 2, direction.getStepY() * 2, direction.getStepZ() * 2);
-            BlockState blockstate1 = p_60193_.getBlockState(blockpos);
-            boolean flag1 = false;
-            if (blockstate1.is(ModBlocks.MOVING_HONEY_STICKY_PISTON.get())) {
-               BlockEntity blockentity = p_60193_.getBlockEntity(blockpos);
-               if (blockentity instanceof HoneyStickyPistonMovingBlockEntity) {
-                  HoneyStickyPistonMovingBlockEntity pistonmovingblockentity = (HoneyStickyPistonMovingBlockEntity)blockentity;
-                  if (pistonmovingblockentity.getDirection() == direction && pistonmovingblockentity.isExtending()) {
-                     pistonmovingblockentity.finalTick();
-                     flag1 = true;
-                  }
-               }
-            }
-
-            if (!flag1) {
-               if (p_60195_ != 1 || blockstate1.isAir() || !isPushable(blockstate1, p_60193_, blockpos, direction.getOpposite(), false, direction) || blockstate1.getPistonPushReaction() != PushReaction.NORMAL && !blockstate1.is(Blocks.PISTON) && !blockstate1.is(Blocks.STICKY_PISTON) && !blockstate1.is(ModBlocks.HONEY_STICKY_PISTON.get())) {
-                  p_60193_.removeBlock(p_60194_.relative(direction), false);
-               } else {
-                  this.moveBlocks(p_60193_, p_60194_, direction, false);
-               }
-            }
-         } else {
-            p_60193_.removeBlock(p_60194_.relative(direction), false);
-         }
-
-         p_60193_.playSound((Player)null, p_60194_, SoundEvents.PISTON_CONTRACT, SoundSource.BLOCKS, 0.5F, p_60193_.random.nextFloat() * 0.15F + 0.6F);
-         p_60193_.gameEvent((Entity)null, GameEvent.PISTON_CONTRACT, p_60194_);
+         // Emit a generic BLOCK_CHANGE event instead of PISTON_CONTRACT
+         level.gameEvent(GameEvent.BLOCK_CHANGE, pos, GameEvent.Context.of(state));
       }
 
-      net.minecraftforge.event.ForgeEventFactory.onPistonMovePost(p_60193_, p_60194_, direction, (p_60195_ == 0));
+      ForgeEventFactory.onPistonMovePost(level, pos, direction, (eventID == 0));
       return true;
    }
 
